@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: auth-service
+          uri: http://auth-service:8081
+          predicates:
+            - Path=/api/auth/**
+
+        - id: account-service
+          uri: http://account-service:8082
+          predicates:
+            - Path=/api/account/**
+
+        - id: transaction-service
+          uri: http://transaction-service:8083
+          predicates:
+            - Path=/api/transaction/**
+
+        - id: fraud-service
+          uri: http://fraud-service:8084
+          predicates:
+            - Path=/api/fraud/**
+
+        - id: approval-service
+          uri: http://approval-service:8085
+          predicates:
+            - Path=/api/approval/**
+
