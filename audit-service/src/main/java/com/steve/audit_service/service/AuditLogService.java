@@ -4,17 +4,24 @@ import com.steve.audit_service.model.AuditLog;
 import com.steve.audit_service.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuditLogService {
 
     private final AuditLogRepository repository;
 
-    public AuditLog recordEvent(String serviceName, String action, String performedBy, String details) {
-        AuditLog log = AuditLog.builder()
+    @Transactional
+    public AuditLog recordEvent(String serviceName, String action,
+                                String performedBy, String details) {
+        AuditLog auditLog = AuditLog.builder()
                 .serviceName(serviceName)
                 .action(action)
                 .performedBy(performedBy)
@@ -22,6 +29,23 @@ public class AuditLogService {
                 .timestamp(LocalDateTime.now())
                 .build();
 
-        return repository.save(log);
+        AuditLog saved = repository.save(auditLog);
+        log.info("Audit recorded: [{}] {} by {}", serviceName, action, performedBy);
+        return saved;
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuditLog> getAllLogs() {
+        return repository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuditLog> getLogsByUser(String userEmail) {
+        return repository.findByPerformedByOrderByTimestampDesc(userEmail);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuditLog> getLogsByService(String serviceName) {
+        return repository.findByServiceNameOrderByTimestampDesc(serviceName);
     }
 }

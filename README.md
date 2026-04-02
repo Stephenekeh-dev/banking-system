@@ -1,189 +1,237 @@
-  # Secure, Fraud-Aware Digital Banking Microservices Platform
-  
-  ## Overview 
-The `Secure Digital Banking Microservices Platform` is a modern, event-driven financial 
-application designed to manage banking operations in a scalable, modular, and secure manner. 
-Built using `Spring Boot microservices architecture`, it leverages Apache `Kafka` for asynchronous 
-messaging, ensuring real-time communication between services. The platform prioritizes security, 
-fraud detection, and auditability, making it ideal for digital banking, fintech solutions,
-or transaction-heavy applications.
+#  Banking Microservices System
 
-## Key Features
-* **Account Management:** Handle customer accounts, balances, and metadata securely.
-* **Transaction Processing:** Record deposits, withdrawals, transfers, and enforce transactional rules.
-* **Approval & Workflow:** Manage manual and automated approval flows for high-risk transactions.
-* **Fraud Detection:** Monitor transactions using velocity checks, limits, blacklists, and alerts.
-* **Notifications:** Send real-time updates via email, SMS, or push notifications.
-* **Audit & Event Logging:** Persist immutable event logs using Kafka and read-optimized storage (PostgreSQL/Elasticsearch).
-* **Security:** OAuth2/JWT authentication, role management, and secure inter-service communication.
-* **Scalable Architecture:** Each service has its own database (PostgreSQL) and communicates via Kafka,
-supporting high throughput and modular deployment.
+A production-ready microservices banking application built with **Spring Boot 3**, **Kafka**, **PostgreSQL**, **Docker**, and **JWT authentication**.
 
-## Technology Stack
-* **Language and framework:** Maven, Java, Spring Boot, Spring Security.
-* **Data stores:** PostgreSQL for persistence and Apache Kafka for event streaming.
-    Docker for containerization and deployment.
+---
 
-## Microservices
-* **Account Service:** manages accounts, balances, account metadata.
-   ### Dependencies 
- * these are the dependencies in the Account_service `pom.xml`
-``` <dependencies>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.postgresql</groupId>
-			<artifactId>postgresql</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.kafka</groupId>
-			<artifactId>spring-kafka</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-validation</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-actuator</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-			<dependency>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-starter-web</artifactId>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-starter-security</artifactId>
-			</dependency>
-			<dependency>
-				<groupId>io.jsonwebtoken</groupId>
-				<artifactId>jjwt-api</artifactId>
-				<version>0.11.5</version>
-			</dependency>
-			<dependency>
-				<groupId>io.jsonwebtoken</groupId>
-				<artifactId>jjwt-impl</artifactId>
-				<version>0.11.5</version>
-				<scope>runtime</scope>
-			</dependency>
-			<dependency>
-				<groupId>io.jsonwebtoken</groupId>
-				<artifactId>jjwt-jackson</artifactId>
-				<version>0.11.5</version>
-				<scope>runtime</scope>
-			</dependency>
-			<dependency>
-				<groupId>org.postgresql</groupId>
-				<artifactId>postgresql</artifactId>
-				<scope>runtime</scope>
-			</dependency>
+##  Architecture Overview
 
- ```
-* **Auth Service:** for registration, authentication and role management.
-  ## Dependencies
-   * these are the dependencies in the Auth_service `pom.xml`
-  ```<dependencies>
-		<!-- Core Spring Boot Starters -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.kafka</groupId>
-			<artifactId>spring-kafka</artifactId>
-			<version>3.0.15</version> <!-- match your Spring Boot version -->
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
-		</dependency>
+```
+                        ┌──────────────────────────────────┐
+                        │           API Gateway             │
+                        │        (Spring Cloud GW)          │
+                        │           Port: 8080              │
+                        └────────────┬─────────────────────┘
+                                     │ Routes
+          ┌──────────────────────────┼───────────────────────────┐
+          │                          │                           │
+          ▼                          ▼                           ▼
+  ┌───────────────┐        ┌─────────────────┐        ┌──────────────────┐
+  │  auth-service │        │ account-service  │        │transaction-service│
+  │   Port: 8081  │        │   Port: 8082    │        │    Port: 8083    │
+  │  authdb (PG)  │        │  accountdb (PG) │        │ transactiondb(PG)│
+  └───────┬───────┘        └────────┬────────┘        └────────┬─────────┘
+          │                         │                           │
+          │              ┌──────────┴───────────────────────────┘
+          │              │           Kafka Events
+          │              ▼
+          │    ┌─────────────────────────────────────────────────┐
+          │    │              Apache Kafka (Port: 9092)           │
+          │    │   Topics: transactions, audit-events,           │
+          │    │           notification-topic, fraud-events       │
+          │    └──┬──────────┬───────────────┬───────────────────┘
+          │       │          │               │
+          ▼       ▼          ▼               ▼
+  ┌─────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+  │audit-service│ │notification- │ │fraud-service │ │approval-     │
+  │  Port: 8085 │ │   service    │ │  Port: 8086  │ │  service     │
+  │ auditdb(PG) │ │  Port: 8084  │ │  frauddb(PG) │ │  Port: 8087  │
+  └─────────────┘ └──────────────┘ └──────────────┘ └──────────────┘
+```
 
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
+---
 
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-validation</artifactId>
-		</dependency>
+## Service Communication Flow
 
-		<!-- Database -->
-		<dependency>
-			<groupId>org.postgresql</groupId>
-			<artifactId>postgresql</artifactId>
-			<scope>runtime</scope>
-		</dependency>
+```
+User → Gateway → auth-service  ──► issues JWT token
+                                         │
+User → Gateway → account-service ◄───────┘ (JWT validated)
+                      │
+                      │ Kafka: "transactions" topic
+                      ▼
+              transaction-service (persists tx records)
+                      │
+                      ├─── Kafka: "audit-events" ──────► audit-service (logs all events)
+                      ├─── Kafka: "notification-topic" ► notification-service (emails/SMS)
+                      └─── Kafka: "fraud-events" ──────► fraud-service (flags suspicious tx)
+                                                               │
+                                                               ▼
+                                                        approval-service
+                                                     (approves/rejects flagged tx)
+```
 
-		<!-- JWT -->
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-api</artifactId>
-			<version>${jjwt.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-impl</artifactId>
-			<version>${jjwt.version}</version>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-jackson</artifactId> <!-- or jjwt-gson if you prefer -->
-			<version>${jjwt.version}</version>
-			<scope>runtime</scope>
-		</dependency>
+---
 
-		<!-- Actuator for monitoring -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-actuator</artifactId>
-		</dependency>
+## 🔐 Authentication Flow
 
-		<!-- Lombok -->
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
-		</dependency>
+```
+1. POST /api/auth/register  → Creates user, hashes password, returns 200
+2. POST /api/auth/login     → Validates credentials, returns JWT (10 hr expiry)
+3. All other requests       → Gateway forwards JWT to each service
+4. Each service             → Validates JWT using shared secret
+```
 
-		<!-- Testing -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>```
-  
-* **Transaction Service:** records transactions (deposits, withdrawals, transfers) and enforces transactional business rules.
-* **Approval Service:** handles manual/automated approval flows for high-risk transactions.
-* **Notification Service:** for email/SMS/push notifications.
-* **Fraud Service:** evaluates fraud rules (limits, velocity, blacklists) and raises alerts or blocks transactions.
-* **Audit  service:** Kafka topics + consumer(s) to persist immutable event logs
-    to a read-optimized DB (Elastic or PostgreSQL audit table).
-* **Gateway:** an API gateway for routing, auth, rate limiting.
+---
 
+##  Services Summary
 
+| Service              | Port | Database        | Responsibilities                        |
+|----------------------|------|-----------------|------------------------------------------|
+| `gateway`            | 8080 | None            | Route requests, rate limiting            |
+| `auth-service`       | 8081 | authdb          | Register, Login, JWT issuance            |
+| `account-service`    | 8082 | accountdb       | Create/manage accounts, balance updates  |
+| `transaction-service`| 8083 | transactiondb   | Record & query transactions              |
+| `notification-service`| 8084| None            | Send email/SMS notifications via Kafka   |
+| `audit-service`      | 8085 | auditdb         | Log all system events via Kafka          |
+| `fraud-service`      | 8086 | frauddb         | Detect and record suspicious activity    |
+| `approval-service`   | 8087 | approvaldb      | Approve/reject flagged transactions      |
 
+---
 
+##  Quick Start
+
+### Prerequisites
+- Docker & Docker Compose
+- Java 17+
+- Maven 3.8+
+
+### Run Everything with Docker Compose
+```bash
+git clone <repo-url>
+cd banking-system
+docker-compose up --build
+```
+
+### Run Individual Services Locally
+```bash
+# Start infrastructure first
+docker-compose up -d postgres kafka zookeeper
+
+# Run a service
+cd auth-service
+mvn spring-boot:run
+```
+
+---
+
+## 🌐 API Endpoints
+
+### Auth Service (`/api/auth`)
+| Method | Endpoint           | Auth | Description         |
+|--------|--------------------|------|---------------------|
+| POST   | `/register`        | No   | Register new user   |
+| POST   | `/login`           | No   | Login, get JWT      |
+
+### Account Service (`/api/accounts`)
+| Method | Endpoint                    | Auth | Description              |
+|--------|-----------------------------|------|--------------------------|
+| POST   | `/create`                   | JWT  | Create new account       |
+| GET    | `/{accountNumber}`          | JWT  | Get account details      |
+| POST   | `/update-balance`           | JWT  | Deposit or Withdraw      |
+
+### Transaction Service (`/api/transactions`)
+| Method | Endpoint   | Auth | Description               |
+|--------|------------|------|---------------------------|
+| POST   | `/`        | JWT  | Create transaction record |
+| GET    | `/`        | JWT  | Get user's transactions   |
+
+### Fraud Service (`/api/fraud`)
+| Method | Endpoint                          | Auth | Description                   |
+|--------|-----------------------------------|------|-------------------------------|
+| POST   | `/`                               | JWT  | Flag suspicious activity      |
+| GET    | `/`                               | JWT  | Get all fraud records         |
+| GET    | `/user/{userId}`                  | JWT  | Get fraud by user             |
+| GET    | `/transaction/{transactionId}`    | JWT  | Get fraud by transaction      |
+| DELETE | `/{id}`                           | JWT  | Remove fraud record           |
+
+### Approval Service (`/api/approvals`)
+| Method | Endpoint                              | Auth | Description                 |
+|--------|---------------------------------------|------|-----------------------------|
+| POST   | `/`                                   | JWT  | Create approval request     |
+| PUT    | `/{id}/status`                        | JWT  | Update approval status      |
+| GET    | `/transaction/{transactionId}`        | JWT  | Get approvals by transaction|
+| GET    | `/status/{status}`                    | JWT  | Get approvals by status     |
+
+---
+
+## Kafka Topics
+
+| Topic                | Producer            | Consumer(s)                        |
+|----------------------|---------------------|------------------------------------|
+| `transactions`       | account-service     | transaction-service                |
+| `audit-events`       | auth-service, all   | audit-service                      |
+| `notification-topic` | transaction-service | notification-service               |
+| `fraud-events`       | transaction-service | fraud-service                      |
+
+---
+
+## 🗄️ Database Schema
+
+### authdb
+```sql
+users (id, email, password, full_name, profile_picture_url, role)
+```
+
+### accountdb
+```sql
+accounts (id, user_id, user_email, account_number, account_type, balance, created_at)
+```
+
+### transactiondb
+```sql
+transactions (id, account_number, user_email, amount, type, target_account, created_at)
+```
+
+### auditdb
+```sql
+audit_logs (id, service_name, action, performed_by, details, timestamp)
+```
+
+### approvaldb
+```sql
+approvals (id, transaction_id, status, reason, created_at, updated_at)
+```
+
+### frauddb
+```sql
+fraud_activities (id, transaction_id, user_id, reason, amount, timestamp)
+```
+
+---
+
+## Environment Variables
+
+All sensitive values should be set as environment variables in production:
+
+| Variable              | Default (dev)          | Description                  |
+|-----------------------|------------------------|------------------------------|
+| `JWT_SECRET`          | (set in env)           | Shared JWT signing secret    |
+| `DB_PASSWORD`         | (set in env)           | PostgreSQL password          |
+| `KAFKA_BOOTSTRAP`     | `kafka:9092`           | Kafka broker address         |
+| `UPLOAD_DIR`          | `uploads/`             | Profile picture upload dir   |
+
+---
+
+##  Testing
+
+```bash
+# Run all tests across all services
+mvn test
+
+# Run tests for a specific service
+cd account-service && mvn test
+```
+
+---
+
+## Known Issues & TODOs
+
+- [ ] Move JWT secret to environment variable / Vault (currently hardcoded)
+- [ ] Replace `localhost` Kafka/DB URLs with Docker service names
+- [ ] Implement actual fraud detection logic (currently placeholder)
+- [ ] Add distributed tracing (Sleuth/Zipkin)
+- [ ] Add Eureka service discovery
+- [ ] Switch profile picture storage to S3/cloud storage
+- [ ] Add pagination to list endpoints
+- [ ] Implement circuit breaker (Resilience4j)

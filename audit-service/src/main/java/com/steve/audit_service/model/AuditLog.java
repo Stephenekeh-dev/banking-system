@@ -18,9 +18,25 @@ public class AuditLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String serviceName;     // e.g. auth-service, approval-service
-    private String action;          // e.g. LOGIN, TRANSACTION_APPROVED
-    private String performedBy;     // e.g. user email or system
-    private String details;         // additional info (JSON/string)
+    @Column(nullable = false)
+    private String serviceName;
+
+    @Column(nullable = false)
+    private String action;
+
+    @Column(nullable = false)
+    private String performedBy;
+
+    @Column(length = 2000)
+    private String details;
+
+    @Column(nullable = false, updatable = false)
     private LocalDateTime timestamp;
+
+    @PrePersist
+    public void onCreate() {
+        if (this.timestamp == null) {
+            this.timestamp = LocalDateTime.now();
+        }
+    }
 }

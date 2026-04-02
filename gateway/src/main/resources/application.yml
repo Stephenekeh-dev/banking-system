@@ -2,31 +2,102 @@ server:
   port: 8080
 
 spring:
+  application:
+    name: gateway
+
   cloud:
     gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
       routes:
+        # ── Auth Service (public - no JWT filter) ──────────────────────────
         - id: auth-service
-          uri: http://auth-service:8081
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
 
+        # ── Account Service (protected) ────────────────────────────────────
         - id: account-service
-          uri: http://account-service:8082
+          uri: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
           predicates:
-            - Path=/api/account/**
+            - Path=/api/accounts/**
+          filters:
+            - StripPrefix=0
+            - name: JwtAuthFilter
 
+        # ── Transaction Service (protected) ────────────────────────────────
         - id: transaction-service
-          uri: http://transaction-service:8083
+          uri: ${TRANSACTION_SERVICE_URL:http://localhost:8083}
           predicates:
-            - Path=/api/transaction/**
+            - Path=/api/transactions/**
+          filters:
+            - StripPrefix=0
+            - name: JwtAuthFilter
 
+        # ── Notification Service (protected) ───────────────────────────────
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - StripPrefix=0
+            - name: JwtAuthFilter
+
+        # ── Audit Service (protected) ───────────────────────────────────────
+        - id: audit-service
+          uri: ${AUDIT_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/audit/**
+          filters:
+            - StripPrefix=0
+            - name: JwtAuthFilter
+
+        # ── Fraud Service (protected) ───────────────────────────────────────
         - id: fraud-service
-          uri: http://fraud-service:8084
+          uri: ${FRAUD_SERVICE_URL:http://localhost:8086}
           predicates:
             - Path=/api/fraud/**
+          filters:
+            - StripPrefix=0
+            - name: JwtAuthFilter
 
+        # ── Approval Service (protected) ────────────────────────────────────
         - id: approval-service
-          uri: http://approval-service:8085
+          uri: ${APPROVAL_SERVICE_URL:http://localhost:8087}
           predicates:
-            - Path=/api/approval/**
+            - Path=/api/approvals/**
+          filters:
+            - StripPrefix=0
+            - name: JwtAuthFilter
 
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+
+jwt:
+  secret: ${JWT_SECRET:u8F3nD9sK2qL1vR5bX7zW6pT4mQ0yA8e}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,routes
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    root: INFO

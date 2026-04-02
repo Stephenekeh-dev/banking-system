@@ -12,20 +12,30 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class Account {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId;     // (optional) or remove if using email only
-    private String userEmail;   // keep if you use email to link to auth-service
+    private Long userId;
+
+    @Column(nullable = false)
+    private String userEmail;
 
     @Column(unique = true, nullable = false)
     private String accountNumber;
 
+    @Column(nullable = false)
     private String accountType;
 
-    @Column(precision = 19, scale = 4)
+    @Column(precision = 19, scale = 2, nullable = false)
     private BigDecimal balance;
 
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @PrePersist
+    public void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }
